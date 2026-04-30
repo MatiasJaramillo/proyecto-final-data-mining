@@ -1,0 +1,10 @@
+pandas
+numpy
+scikit-learn
+xgboost
+lightgbm
+catboost
+joblib
+pyarrow
+snowflake-connector-python
+python-dotenv
