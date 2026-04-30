@@ -1,6 +1,6 @@
 # Estructura del proyecto:
 
-'''bash
+```bash
 project-root/
 │
 ├── README.md
@@ -77,4 +77,4 @@ project-root/
     ├── test_features.py
     ├── test_model.py
     └── test_api.py
-''' 
+```
