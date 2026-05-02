@@ -1,9 +1,41 @@
+# Entornos virtuales
+venv/
+env/
 .env
+.venv/
+env.bak/
+venv.bak/
+
+# Archivos compilados en Python
 __pycache__/
-*.pyc
-.ipynb_checkpoints/
+*.py[cod]
+*$py.class
 
-data/
-models/*.pkl
+# Jupyter Notebooks
+.ipynb_checkpoints
 
+# Archivos de datos (¡Crucial para no versionar datos pesados!)
+data/interim/*
+data/processed/*
+data/raw/*
+!data/.gitkeep
+!data/**/*.gitkeep
+
+# Modelos guardados
+*.pkl
+*.model
+*.h5
+*.joblib
+models/*
+
+# Entornos de desarrollo / IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# MacOS
 .DS_Store
+
+# Archivos de log
+*.log

@@ -1,10 +1,23 @@
-pandas
-numpy
-scikit-learn
-xgboost
-lightgbm
-catboost
-joblib
-pyarrow
-snowflake-connector-python
-python-dotenv
+# Data Manipulation & Analysis
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Machine Learning
+scikit-learn>=1.2.2
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.2
+
+# Jupyter Notebook Environment
+jupyterlab>=3.6.0
+ipykernel>=6.20.0
+
+# API / Deployment
+fastapi>=0.95.0
+uvicorn>=0.22.0
+pydantic>=2.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+pytest>=7.3.0
