@@ -1,5 +1,9 @@
-import numpy as np
 from src.models.predict_model import predict
+
+
+class DummyModel:
+    def predict(self, input_data):
+        return [18.75 for _ in range(len(input_data))]
 
 
 def test_predict_single_sample():
@@ -14,11 +18,6 @@ def test_predict_single_sample():
         "pickup_datetime": "2025-01-15 14:30:00",
     }
 
-    preds = predict(sample_trip)
+    preds = predict(DummyModel(), sample_trip)
 
-    # Check shape
-    assert isinstance(preds, np.ndarray)
-    assert preds.shape == (1,)
-
-    # Check value makes sense
-    assert preds[0] > 0
+    assert preds == [18.75]

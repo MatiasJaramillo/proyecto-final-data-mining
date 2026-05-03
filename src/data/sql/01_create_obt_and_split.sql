@@ -28,11 +28,7 @@ SELECT
         WHEN DATEDIFF('second', pickup_datetime, dropoff_datetime) > 0 AND trip_distance > 0 
         THEN ROUND(trip_distance / (DATEDIFF('second', pickup_datetime, dropoff_datetime) / 3600.0), 2)
         ELSE NULL 
-    END AS avg_speed_mph,
-    CASE 
-        WHEN fare_amount > 0 THEN ROUND((tip_amount / fare_amount) * 100.0, 2)
-        ELSE NULL 
-    END AS tip_pct
+    END AS avg_speed_mph
 FROM consolidated_raw
 WHERE 
     -- Validacion 1: Fechas no nulas
@@ -53,13 +49,17 @@ WHERE
 
 -- Creación de la partición temporal para el equipo de ML
 -- Train 2015-2023
-CREATE OR REPLACE VIEW OBT_TRIPS_TRAIN AS
+CREATE OR REPLACE VIEW TRAIN_SET AS
 SELECT * FROM OBT_TRIPS WHERE source_year BETWEEN 2015 AND 2023;
 
 -- Val 2024
-CREATE OR REPLACE VIEW OBT_TRIPS_VAL AS
+CREATE OR REPLACE VIEW VAL_SET AS
 SELECT * FROM OBT_TRIPS WHERE source_year = 2024;
 
 -- Test 2025
-CREATE OR REPLACE VIEW OBT_TRIPS_TEST AS
+CREATE OR REPLACE VIEW TEST_SET AS
 SELECT * FROM OBT_TRIPS WHERE source_year = 2025;
+
+CREATE OR REPLACE VIEW OBT_TRIPS_TRAIN AS SELECT * FROM TRAIN_SET;
+CREATE OR REPLACE VIEW OBT_TRIPS_VAL AS SELECT * FROM VAL_SET;
+CREATE OR REPLACE VIEW OBT_TRIPS_TEST AS SELECT * FROM TEST_SET;

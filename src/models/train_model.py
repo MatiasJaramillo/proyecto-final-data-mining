@@ -1,56 +1,40 @@
-"""
-Train and export the best regression model.
-
-This script:
-1. Loads train/validation/test samples from Snowflake in batches.
-2. Applies notebook-derived preprocessing from src/features/build_features.py.
-3. Trains the required models.
-4. Selects the best model using validation RMSE.
-5. Evaluates once on test.
-6. Exports the final sklearn Pipeline.
-"""
+"""Train and export the best regression model."""
+from __future__ import annotations
 
 import json
 from pathlib import Path
 
 import joblib
 import pandas as pd
-
-from sklearn.pipeline import Pipeline
 from sklearn.dummy import DummyRegressor
-from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import (
     AdaBoostRegressor,
-    GradientBoostingRegressor,
     BaggingRegressor,
+    GradientBoostingRegressor,
     VotingRegressor,
 )
+from sklearn.pipeline import Pipeline
+from sklearn.tree import DecisionTreeRegressor
 
-from xgboost import XGBRegressor
-from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
+from lightgbm import LGBMRegressor
+from xgboost import XGBRegressor
 
 from src.data.ingestion import fetch_data_in_batches
-from src.features.build_features import preprocess_data, get_feature_pipeline
+from src.features.build_features import TARGET, get_feature_pipeline, preprocess_data
 from src.models.evaluate_model import regression_metrics
 
 
 RANDOM_STATE = 42
-TARGET = "total_amount"
 
-TRAIN_QUERY = "SELECT * FROM ANALYTICS.REFINED.OBT_TRIPS_TRAIN SAMPLE (5) LIMIT 300000"
-VAL_QUERY = "SELECT * FROM ANALYTICS.REFINED.OBT_TRIPS_VAL SAMPLE (10) LIMIT 100000"
-TEST_QUERY = "SELECT * FROM ANALYTICS.REFINED.OBT_TRIPS_TEST SAMPLE (10) LIMIT 100000"
+TRAIN_QUERY = "SELECT * FROM ANALYTICS.REFINED.TRAIN_SET SAMPLE (5) LIMIT 300000"
+VAL_QUERY = "SELECT * FROM ANALYTICS.REFINED.VAL_SET SAMPLE (10) LIMIT 100000"
+TEST_QUERY = "SELECT * FROM ANALYTICS.REFINED.TEST_SET SAMPLE (10) LIMIT 100000"
 
 
 def load_query_as_dataframe(query: str, batch_size: int = 50_000) -> pd.DataFrame:
-    """
-    Loads query results using the project batch iterator and concatenates into one DataFrame.
-
-    This still avoids downloading the full 20GB because the SQL queries use SAMPLE/LIMIT.
-    """
+    """Load query results using the project batch iterator."""
     batches = []
-
     for batch_df in fetch_data_in_batches(query, batch_size=batch_size):
         batches.append(batch_df)
 
@@ -61,9 +45,7 @@ def load_query_as_dataframe(query: str, batch_size: int = 50_000) -> pd.DataFram
 
 
 def prepare_xy(df: pd.DataFrame):
-    """
-    Apply preprocessing and split into X/y.
-    """
+    """Apply preprocessing and split into X/y."""
     cleaned = preprocess_data(df)
 
     if TARGET not in cleaned.columns:
@@ -71,13 +53,11 @@ def prepare_xy(df: pd.DataFrame):
 
     X = cleaned.drop(columns=[TARGET])
     y = cleaned[TARGET]
-
     return X, y
 
+
 def get_models():
-    """
-    Required baseline, boosting, bagging, pasting and voting models.
-    """
+    """Required baseline, boosting, bagging, pasting and voting models."""
     xgb_model = XGBRegressor(
         n_estimators=300,
         learning_rate=0.05,
@@ -110,27 +90,21 @@ def get_models():
 
     return {
         "baseline_mean": DummyRegressor(strategy="mean"),
-
         "adaboost": AdaBoostRegressor(
             estimator=DecisionTreeRegressor(max_depth=4, random_state=RANDOM_STATE),
             n_estimators=100,
             learning_rate=0.05,
             random_state=RANDOM_STATE,
         ),
-
         "gradient_boosting": GradientBoostingRegressor(
             n_estimators=200,
             learning_rate=0.05,
             max_depth=3,
             random_state=RANDOM_STATE,
         ),
-
         "xgboost": xgb_model,
-
         "lightgbm": lgbm_model,
-
         "catboost": cat_model,
-
         "bagging": BaggingRegressor(
             estimator=DecisionTreeRegressor(max_depth=10, random_state=RANDOM_STATE),
             n_estimators=50,
@@ -138,7 +112,6 @@ def get_models():
             random_state=RANDOM_STATE,
             n_jobs=-1,
         ),
-
         "pasting": BaggingRegressor(
             estimator=DecisionTreeRegressor(max_depth=10, random_state=RANDOM_STATE),
             n_estimators=50,
@@ -146,7 +119,6 @@ def get_models():
             random_state=RANDOM_STATE,
             n_jobs=-1,
         ),
-
         "voting_ensemble": VotingRegressor(
             estimators=[
                 ("xgboost", xgb_model),
@@ -159,9 +131,7 @@ def get_models():
 
 
 def train_and_compare(X_train, y_train, X_val, y_val):
-    """
-    Train every required model and select the best by validation RMSE.
-    """
+    """Train every required model and select the best by validation RMSE."""
     models = get_models()
     results = {}
     trained_pipelines = {}
@@ -169,17 +139,14 @@ def train_and_compare(X_train, y_train, X_val, y_val):
     for model_name, model in models.items():
         print(f"\nTraining {model_name}...")
 
-        feature_pipeline = get_feature_pipeline(X_train)
-
         pipeline = Pipeline(
             steps=[
-                ("features", feature_pipeline),
+                ("features", get_feature_pipeline(X_train)),
                 ("model", model),
             ]
         )
 
         pipeline.fit(X_train, y_train)
-
         val_preds = pipeline.predict(X_val)
         metrics = regression_metrics(y_val, val_preds)
 
@@ -198,15 +165,16 @@ def train_and_compare(X_train, y_train, X_val, y_val):
 
 
 def save_artifacts(best_model_name, best_pipeline, validation_results, test_metrics):
-    """
-    Save model and metrics.
-    """
+    """Save model and metrics in the API default location and legacy model folder."""
+    Path("data/processed").mkdir(parents=True, exist_ok=True)
     Path("models").mkdir(exist_ok=True)
 
-    model_path = "models/final_model.pkl"
-    metrics_path = "models/model_metrics.json"
+    model_path = Path("data/processed/price_model.pkl")
+    legacy_model_path = Path("models/final_model.pkl")
+    metrics_path = Path("models/model_metrics.json")
 
     joblib.dump(best_pipeline, model_path)
+    joblib.dump(best_pipeline, legacy_model_path)
 
     output = {
         "best_model": best_model_name,
@@ -214,18 +182,17 @@ def save_artifacts(best_model_name, best_pipeline, validation_results, test_metr
         "test_metrics": test_metrics,
     }
 
-    with open(metrics_path, "w") as f:
+    with metrics_path.open("w", encoding="utf-8") as f:
         json.dump(output, f, indent=4)
 
     print("\nArtifacts saved:")
     print(f"- {model_path}")
+    print(f"- {legacy_model_path}")
     print(f"- {metrics_path}")
 
 
 def train_model():
-    """
-    Main training workflow.
-    """
+    """Main training workflow."""
     print("Loading train sample...")
     train_df = load_query_as_dataframe(TRAIN_QUERY)
 
