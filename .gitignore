@@ -27,6 +27,7 @@ data/raw/*
 *.h5
 *.joblib
 models/*
+catboost_info/
 
 # Entornos de desarrollo / IDEs
 .idea/

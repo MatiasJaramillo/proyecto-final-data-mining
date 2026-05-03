@@ -1,28 +1,36 @@
-"""
-Servicio web rápido (FastAPI) para servir el modelo empaquetado.
-"""
 from fastapi import FastAPI
 from pydantic import BaseModel
 import pandas as pd
-# from src.models.predict_model import load_model, predict
 
-app = FastAPI(title="API - Predicción de Precios ML", version="1.0")
+from src.models.predict_model import predict
 
-# TODO: Define el esquema de Pydantic según lo que el modelo va a recibir
+
+app = FastAPI(title="Taxi Price Prediction API")
+
+
+# Input schema (what frontend sends)
 class TripInput(BaseModel):
+    vendor_id: int
     passenger_count: int
     trip_distance: float
-    # ... Añadir resto de los features
+    rate_code_id: int
+    pu_location_id: int
+    do_location_id: int
+    service_type: str
+    pickup_datetime: str
 
-@app.on_event("startup")
-def load_artifacts():
-    """Ejecutado al iniciar el servidor FastAPI. Usado para dejar en caché el modelo."""
-    # TODO: model = load_model('ruta/al/modelo.pkl')
-    pass
+
+@app.get("/")
+def health_check():
+    return {"status": "ok"}
+
 
 @app.post("/predict")
 def predict_price(trip: TripInput):
-    """Endpoint para predecir total_amount del viaje entrante."""
-    # TODO: Mapear el TripInput a un pandas DataFrame
-    # TODO: Llamar la función predict y devolver el resultado
-    return {"estimated_total_amount": 0.0}
+    input_df = pd.DataFrame([trip.model_dump()])
+
+    prediction = predict(input_df)
+
+    return {
+        "predicted_price": float(prediction[0])
+    }
