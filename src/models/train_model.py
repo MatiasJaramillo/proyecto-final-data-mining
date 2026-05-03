@@ -2,7 +2,12 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
 from pathlib import Path
+
+# Add the project root directory to the python path to allow imports from 'src'
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import joblib
 import pandas as pd

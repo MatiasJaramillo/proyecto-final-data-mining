@@ -27,6 +27,43 @@ with st.sidebar:
         except requests.RequestException as exc:
             st.error(f"No se pudo conectar con FastAPI: {exc}")
 
+import pandas as pd
+
+# Diccionarios de mapeo para mejorar la experiencia de usuario
+providers = {
+    1: "1 - Creative Mobile Technologies, LLC",
+    2: "2 - Curb Mobility, LLC",
+}
+
+rate_codes = {
+    1: "1 - Standard rate",
+    2: "2 - JFK",
+    3: "3 - Newark",
+    4: "4 - Nassau or Westchester",
+    5: "5 - Negotiated fare",
+    6: "6 - Group ride",
+    99: "99 - Null/unknown"
+}
+
+payment_methods = {
+    1: "1 - Credit card",
+    2: "2 - Cash",
+    3: "3 - No charge",
+    4: "4 - Dispute",
+    5: "5 - Unknown",
+    6: "6 - Voided trip"
+}
+
+# Cargar zonas desde CSV
+try:
+    zones_df = pd.read_csv('app/data/taxi_zone_lookup (1).csv')
+    zones_dict = {row['LocationID']: f"{row['LocationID']} - {row['Borough']}: {row['Zone']}" for _, row in zones_df.iterrows()}
+except Exception:
+    # Fallback por si no encuentra el archivo
+    zones_dict = {i: f"Zona {i}" for i in range(1, 266)}
+    zones_dict[132] = "132 - Queens: JFK Airport"
+    zones_dict[236] = "236 - Manhattan: Upper East Side North"
+
 st.subheader("Datos del viaje")
 
 with st.form("trip_form"):
@@ -34,7 +71,7 @@ with st.form("trip_form"):
 
     with col_left:
         taxi_type = st.selectbox("Tipo de taxi", ["yellow", "green"])
-        vendor_id = st.selectbox("Proveedor", [1, 2])
+        vendor_id = st.selectbox("Proveedor", options=list(providers.keys()), format_func=lambda x: providers[x])
         passenger_count = st.number_input("Pasajeros", min_value=0, max_value=9, value=1, step=1)
         trip_distance = st.number_input(
             "Distancia (millas)",
@@ -54,10 +91,16 @@ with st.form("trip_form"):
     with col_right:
         pickup_date = st.date_input("Fecha de recogida")
         pickup_time = st.time_input("Hora de recogida", value=time(8, 30))
-        rate_code_id = st.number_input("Rate code", min_value=1, max_value=99, value=1, step=1)
-        pu_location_id = st.number_input("Zona origen", min_value=1, max_value=265, value=132, step=1)
-        do_location_id = st.number_input("Zona destino", min_value=1, max_value=265, value=236, step=1)
-        payment_type = st.selectbox("Metodo de pago", [1, 2, 3, 4, 5, 6])
+        rate_code_id = st.selectbox("Rate code", options=list(rate_codes.keys()), format_func=lambda x: rate_codes[x])
+        
+        # Encontrar los indices por defecto para JFK (132) y UES (236) si existen en las llaves
+        keys_list = list(zones_dict.keys())
+        idx_origen = keys_list.index(132) if 132 in keys_list else 0
+        idx_destino = keys_list.index(236) if 236 in keys_list else 0
+        
+        pu_location_id = st.selectbox("Zona origen", options=keys_list, index=idx_origen, format_func=lambda x: zones_dict[x])
+        do_location_id = st.selectbox("Zona destino", options=keys_list, index=idx_destino, format_func=lambda x: zones_dict[x])
+        payment_type = st.selectbox("Metodo de pago", options=list(payment_methods.keys()), index=1, format_func=lambda x: payment_methods[x])
 
     submitted = st.form_submit_button("Predecir tarifa")
 
