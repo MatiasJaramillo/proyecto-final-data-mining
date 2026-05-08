@@ -1,4 +1,4 @@
-"""Ejecuta los scripts SQL para crear RAW, OBT y splits temporales."""
+"""Ejecuta el script SQL para crear las tablas RAW iniciales."""
 from __future__ import annotations
 
 import os
@@ -7,12 +7,10 @@ from pathlib import Path
 
 import snowflake.connector
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.append(str(PROJECT_ROOT))
 
 from src.utils.config import get_snowflake_credentials
-
 
 def run_sql_file(filepath: str, conn) -> None:
     full_path = PROJECT_ROOT / filepath
@@ -27,7 +25,6 @@ def run_sql_file(filepath: str, conn) -> None:
     finally:
         cursor.close()
 
-
 if __name__ == "__main__":
     creds = get_snowflake_credentials()
     conn = snowflake.connector.connect(
@@ -39,9 +36,8 @@ if __name__ == "__main__":
     )
 
     try:
-        print("Running 01_create_obt_and_split.sql...")
-        run_sql_file("src/data/sql/01_create_obt_and_split.sql", conn)
-
-        print("Construcción de OBT completada!")
+        print("Running 00_create_raw_tables.sql...")
+        run_sql_file("src/data/sql/00_create_raw_tables.sql", conn)
+        print("Tablas RAW creadas exitosamente!")
     finally:
         conn.close()
